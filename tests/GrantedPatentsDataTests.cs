@@ -1,4 +1,4 @@
-﻿/*
+/*
  * QUANTCONNECT.COM - Democratizing Finance, Empowering Individuals.
  * Lean Algorithmic Trading Engine v2.0. Copyright 2014 QuantConnect Corporation.
  *
@@ -27,7 +27,7 @@ using QuantConnect.DataSource;
 namespace QuantConnect.DataLibrary.Tests
 {
     [TestFixture]
-    public class MyCustomDataTypeTests
+    public class GrantedPatentsDataTests
     {
         [Test]
         public void JsonRoundTrip()
@@ -87,12 +87,20 @@ namespace QuantConnect.DataLibrary.Tests
 
         private BaseData CreateNewInstance()
         {
-            return new MyCustomDataType
+            return new GrantedPatentsData
             {
                 Symbol = Symbol.Empty,
                 Time = DateTime.Today,
                 DataType = MarketDataType.Base,
-                SomeCustomProperty = "This is some market related information"
+                PatentsFiled = 5,
+                CumulativePatents = 1234,
+                Patents30d = 50,
+                Patents90d = 150,
+                Patents365d = 500,
+                UniqueIpcCodes = 8,
+                UniqueSections = 3,
+                TechDiversity = 0.75m,
+                UniqueLocations = 2
             };
         }
     }
