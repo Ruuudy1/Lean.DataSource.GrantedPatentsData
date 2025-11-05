@@ -14,29 +14,41 @@
 from AlgorithmImports import *
 
 ### <summary>
-### Example algorithm using the custom data type as a source of alpha
+### Example algorithm using patent data as a source of alpha
+### Demonstrates how to trade based on patent filing activity
 ### </summary>
-class CustomDataAlgorithm(QCAlgorithm):
+class GrantedPatentsDataAlgorithm(QCAlgorithm):
     def Initialize(self):
         ''' Initialise the data and resolution required, as well as the cash and start-end dates for your algorithm. All algorithms must initialized.'''
         
-        self.SetStartDate(2020, 10, 7)   #Set Start Date
-        self.SetEndDate(2020, 10, 11)    #Set End Date
-        self.equity_symbol = self.AddEquity("SPY", Resolution.Daily).Symbol
-        self.custom_data_symbol = self.AddData(MyCustomDataType, self.equity_symbol).Symbol
+        self.SetStartDate(2010, 1, 1)   # Apple's first patent was filed in 1977
+        self.SetEndDate(2025, 12, 31)
+        self.equity_symbol = self.AddEquity("AAPL", Resolution.Daily).Symbol
+        self.patent_data_symbol = self.AddData(GrantedPatentsData, self.equity_symbol).Symbol
 
     def OnData(self, slice):
         ''' OnData event is the primary entry point for your algorithm. Each new data point will be pumped in here.
 
         :param Slice slice: Slice object keyed by symbol containing the stock data
         '''
-        data = slice.Get(MyCustomDataType)
+        data = slice.Get(GrantedPatentsData)
         if data:
-            custom_data = data[self.custom_data_symbol]
-            if custom_data.SomeCustomProperty == "buy":
-                self.SetHoldings(self.equitySymbol, 1)
-            elif custom_data.SomeCustomProperty == "sell":
-                self.SetHoldings(self.equitySymbol, -1)
+            patent_data = data[self.patent_data_symbol]
+            
+            # Strategy: Buy when patents are filed (innovation signal)
+            # Increase position when patent velocity increases
+            if patent_data.PatentsFiled > 0:
+                # Stronger signal if tech diversity is high (more varied innovation)
+                weight = 1.0 if patent_data.TechDiversity > 0.5 else 0.5
+                
+                if not self.Portfolio.Invested:
+                    self.SetHoldings(self.equity_symbol, weight)
+                    self.Debug(f"Bought {self.equity_symbol} - Patents Filed: {patent_data.PatentsFiled}, Tech Diversity: {patent_data.TechDiversity}")
+            
+            # Hold position if cumulative patents growing
+            elif patent_data.CumulativePatents > 0 and self.Portfolio[self.equity_symbol].Invested:
+                # Keep position
+                pass
 
     def OnOrderEvent(self, orderEvent):
         ''' Order fill event handler. On an order fill update the resulting information is passed to this method.
@@ -44,4 +56,5 @@ class CustomDataAlgorithm(QCAlgorithm):
         :param OrderEvent orderEvent: Order event details containing details of the events
         '''
         if orderEvent.Status == OrderStatus.Filled:
-            self.Debug(f'Purchased Stock: {orderEvent.Symbol}')
+            self.Debug(f'Order Filled: {orderEvent.Symbol} - Quantity: {orderEvent.FillQuantity}')
+

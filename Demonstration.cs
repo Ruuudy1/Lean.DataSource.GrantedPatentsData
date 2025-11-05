@@ -23,11 +23,12 @@ using QuantConnect.DataSource;
 namespace QuantConnect.DataLibrary.Tests
 {
     /// <summary>
-    /// Example algorithm using the custom data type as a source of alpha
+    /// Example algorithm using patent data as a source of alpha
+    /// Demonstrates how to trade based on patent filing activity
     /// </summary>
-    public class CustomDataAlgorithm : QCAlgorithm
+    public class GrantedPatentsDataAlgorithm : QCAlgorithm
     {
-        private Symbol _customDataSymbol;
+        private Symbol _patentDataSymbol;
         private Symbol _equitySymbol;
 
         /// <summary>
@@ -35,10 +36,10 @@ namespace QuantConnect.DataLibrary.Tests
         /// </summary>
         public override void Initialize()
         {
-            SetStartDate(2013, 10, 07);  //Set Start Date
-            SetEndDate(2013, 10, 11);    //Set End Date
-            _equitySymbol = AddEquity("SPY").Symbol;
-            _customDataSymbol = AddData<MyCustomDataType>(_equitySymbol).Symbol;
+            SetStartDate(1978, 1, 1);   // Apple's first patent was filed in 1977
+            SetEndDate(1980, 12, 31);    
+            _equitySymbol = AddEquity("AAPL").Symbol;
+            _patentDataSymbol = AddData<GrantedPatentsData>(_equitySymbol).Symbol;
         }
 
         /// <summary>
@@ -47,17 +48,28 @@ namespace QuantConnect.DataLibrary.Tests
         /// <param name="slice">Slice object keyed by symbol containing the stock data</param>
         public override void OnData(Slice slice)
         {
-            var data = slice.Get<MyCustomDataType>();
+            var data = slice.Get<GrantedPatentsData>();
             if (!data.IsNullOrEmpty())
             {
-                // based on the custom data property we will buy or short the underlying equity
-                if (data[_customDataSymbol].SomeCustomProperty == "buy")
+                var patentData = data[_patentDataSymbol];
+                
+                // Strategy: Buy when patents are filed (innovation signal)
+                // Increase position when patent velocity increases
+                if (patentData.PatentsFiled > 0)
                 {
-                    SetHoldings(_equitySymbol, 1);
+                    // Stronger signal if tech diversity is high (more varied innovation)
+                    var weight = patentData.TechDiversity > 0.5m ? 1.0m : 0.5m;
+                    
+                    if (!Portfolio.Invested)
+                    {
+                        SetHoldings(_equitySymbol, (double)weight);
+                        Debug($"Bought {_equitySymbol} - Patents Filed: {patentData.PatentsFiled}, Tech Diversity: {patentData.TechDiversity}");
+                    }
                 }
-                else if (data[_customDataSymbol].SomeCustomProperty == "sell")
+                // Hold position if cumulative patents growing
+                else if (patentData.CumulativePatents > 0 && Portfolio[_equitySymbol].Invested)
                 {
-                    SetHoldings(_equitySymbol, -1);
+                    // Keep position
                 }
             }
         }
@@ -70,7 +82,7 @@ namespace QuantConnect.DataLibrary.Tests
         {
             if (orderEvent.Status.IsFill())
             {
-                Debug($"Purchased Stock: {orderEvent.Symbol}");
+                Debug($"Order Filled: {orderEvent.Symbol} - Quantity: {orderEvent.FillQuantity}");
             }
         }
     }

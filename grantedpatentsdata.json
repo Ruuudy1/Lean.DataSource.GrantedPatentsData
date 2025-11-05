@@ -1,5 +1,5 @@
 {
-	"description": "",
+	"description": "USPTO granted patents data with engineered features for quantitative trading strategies",
 	
 	"platforms-features": [
 		{
@@ -10,31 +10,22 @@
 			"Live Trading":	[0,1,1]
 		}
 	],
-	"data-supported": [ "TradeBar", "MyCustomData" ], 
-	"more-information": "https://www.mycustomdata.com",
+	"data-supported": [ "GrantedPatentsData" ], 
+	"more-information": "https://patentsview.org/download/data-download-tables",
 	"documentation": "",
 	"module-specification": {
 		"download": {
 			"data-types": [
-				"Trade",
-				"Quote",
-				"OpenInterest"
+				"GrantedPatentsData"
 			],
 			"resolutions": [
-				"Tick",
-				"Second",
-				"Minute",
-				"Hour",
 				"Daily"
 			],
 			"security-types": [
-				"Equity",
-				"FutureOption",
-				"..."
+				"Equity"
 			],
 			"markets": [
-				"USA",
-				"..."
+				"USA"
 			]
 		}
 	}

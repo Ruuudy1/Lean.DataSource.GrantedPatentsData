@@ -26,10 +26,11 @@ using QuantConnect.Data.UniverseSelection;
 namespace QuantConnect.DataSource
 {
     /// <summary>
-    /// Example custom data type
+    /// GrantedPatentsDataUniverse - Universe selection based on patent filing activity
+    /// Provides daily universe of stocks with significant patent activity
     /// </summary>
     [ProtoContract(SkipConstructor = true)]
-    public class MyCustomDataUniverse : BaseDataCollection
+    public class GrantedPatentsDataUniverse : BaseDataCollection
     {
         /// <summary>
         /// Time passed between the date of the data and the time the data became available to us
@@ -37,14 +38,49 @@ namespace QuantConnect.DataSource
         private readonly static TimeSpan _period = TimeSpan.FromDays(1);
 
         /// <summary>
-        /// Some custom data property
+        /// Number of patents filed by this company on this date
         /// </summary>
-        public string SomeCustomProperty { get; set; }
+        public decimal PatentsFiled { get; set; }
 
         /// <summary>
-        /// Some custom data property
+        /// Cumulative number of patents filed by this company
         /// </summary>
-        public decimal SomeNumericProperty { get; set; }
+        public decimal CumulativePatents { get; set; }
+
+        /// <summary>
+        /// Rolling 30-day patent count
+        /// </summary>
+        public decimal Patents30d { get; set; }
+
+        /// <summary>
+        /// Rolling 90-day patent count
+        /// </summary>
+        public decimal Patents90d { get; set; }
+
+        /// <summary>
+        /// Rolling 365-day patent count
+        /// </summary>
+        public decimal Patents365d { get; set; }
+
+        /// <summary>
+        /// Number of unique IPC classification codes
+        /// </summary>
+        public decimal UniqueIpcCodes { get; set; }
+
+        /// <summary>
+        /// Number of unique IPC sections (high-level tech categories)
+        /// </summary>
+        public decimal UniqueSections { get; set; }
+
+        /// <summary>
+        /// Technology diversity metric (0-1 scale)
+        /// </summary>
+        public decimal TechDiversity { get; set; }
+
+        /// <summary>
+        /// Number of unique geographic locations
+        /// </summary>
+        public decimal UniqueLocations { get; set; }
 
         /// <summary>
         /// Time the data became available
@@ -64,7 +100,7 @@ namespace QuantConnect.DataSource
                 Path.Combine(
                     Globals.DataFolder,
                     "alternative",
-                    "mycustomdatatype",
+                    "grantedpatentsdata",
                     "universe",
                     $"{date.ToStringInvariant(DateFormat.EightCharacter)}.csv"
                 ),
@@ -83,18 +119,36 @@ namespace QuantConnect.DataSource
         /// <returns>New instance</returns>
         public override BaseData Reader(SubscriptionDataConfig config, string line, DateTime date, bool isLiveMode)
         {
-            var csv = line.Split(','); 
+            // Expected format: SecurityIdentifier,Ticker,PatentsFiled,CumulativePatents,Patents30d,Patents90d,Patents365d,UniqueIpcCodes,UniqueSections,TechDiversity,UniqueLocations
+            var csv = line.Split(',');
 
-            var someNumericProperty = decimal.Parse(csv[2], NumberStyles.Any, CultureInfo.InvariantCulture); 
+            var patentsFiled = decimal.Parse(csv[2], NumberStyles.Any, CultureInfo.InvariantCulture);
 
-            return new MyCustomDataUniverse
+            return new GrantedPatentsDataUniverse
             {
                 Symbol = new Symbol(SecurityIdentifier.Parse(csv[0]), csv[1]),
-                SomeNumericProperty = someNumericProperty,
-                SomeCustomProperty = csv[3],
-                Time =  date - _period,
-                Value = someNumericProperty
+                Time = date - _period,
+                Value = patentsFiled, // Use patents filed as primary value
+                
+                PatentsFiled = patentsFiled,
+                CumulativePatents = decimal.Parse(csv[3], NumberStyles.Any, CultureInfo.InvariantCulture),
+                Patents30d = decimal.Parse(csv[4], NumberStyles.Any, CultureInfo.InvariantCulture),
+                Patents90d = decimal.Parse(csv[5], NumberStyles.Any, CultureInfo.InvariantCulture),
+                Patents365d = decimal.Parse(csv[6], NumberStyles.Any, CultureInfo.InvariantCulture),
+                UniqueIpcCodes = decimal.Parse(csv[7], NumberStyles.Any, CultureInfo.InvariantCulture),
+                UniqueSections = decimal.Parse(csv[8], NumberStyles.Any, CultureInfo.InvariantCulture),
+                TechDiversity = decimal.Parse(csv[9], NumberStyles.Any, CultureInfo.InvariantCulture),
+                UniqueLocations = decimal.Parse(csv[10], NumberStyles.Any, CultureInfo.InvariantCulture)
             };
+        }
+
+        /// <summary>
+        /// Indicates whether the data source is tied to an underlying symbol and requires that corporate events be applied to it as well, such as renames and delistings
+        /// </summary>
+        /// <returns>true</returns>
+        public override bool RequiresMapping()
+        {
+            return true;
         }
 
         /// <summary>
@@ -145,15 +199,22 @@ namespace QuantConnect.DataSource
         /// </summary>
         public override BaseData Clone()
         {
-            return new MyCustomDataUniverse
+            return new GrantedPatentsDataUniverse
             {
                 Symbol = Symbol,
                 Time = Time,
                 Data = Data,
                 Value = Value,
 
-                SomeNumericProperty = SomeNumericProperty,
-                SomeCustomProperty = SomeCustomProperty,
+                PatentsFiled = PatentsFiled,
+                CumulativePatents = CumulativePatents,
+                Patents30d = Patents30d,
+                Patents90d = Patents90d,
+                Patents365d = Patents365d,
+                UniqueIpcCodes = UniqueIpcCodes,
+                UniqueSections = UniqueSections,
+                TechDiversity = TechDiversity,
+                UniqueLocations = UniqueLocations
             };
         }
     }

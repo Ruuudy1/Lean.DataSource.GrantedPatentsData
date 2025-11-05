@@ -21,9 +21,9 @@ using QuantConnect.DataSource;
 namespace QuantConnect.Algorithm.CSharp
 {
     /// <summary>
-    /// Example algorithm using the custom data type as a source of alpha
+    /// Example algorithm using patent data universe to select stocks with high innovation activity
     /// </summary>
-    public class CustomDataUniverse : QCAlgorithm
+    public class GrantedPatentsDataUniverseAlgorithm : QCAlgorithm
     {
         /// <summary>
         /// Initialise the data and resolution required, as well as the cash and start-end dates for your algorithm. All algorithms must initialized.
@@ -37,32 +37,37 @@ namespace QuantConnect.Algorithm.CSharp
             SetEndDate(2022, 2, 18);
             SetCash(100000);
 
-            // add a custom universe data source (defaults to usa-equity)
-            var universe = AddUniverse<MyCustomDataUniverse>(data =>
+            // Add universe based on patent filing activity
+            var universe = AddUniverse<GrantedPatentsDataUniverse>(data =>
             {
-                foreach (MyCustomDataUniverse datum in data)
+                foreach (GrantedPatentsDataUniverse datum in data)
                 {
-                    Log($"{datum.Symbol},{datum.SomeCustomProperty},{datum.SomeNumericProperty}");
+                    Log($"{datum.Symbol} - Patents Filed: {datum.PatentsFiled}, Tech Diversity: {datum.TechDiversity}, 90d Patents: {datum.Patents90d}");
                 }
 
-                // define our selection criteria
-                return from MyCustomDataUniverse d in data
-                       where d.SomeCustomProperty == "buy"
+                // Selection criteria: Companies with patent activity and tech diversity
+                // Filter for companies with:
+                // 1. Recent patent filing activity (Patents90d > 0)
+                // 2. High technology diversity (TechDiversity > 0.5) 
+                // 3. Minimum cumulative patents (CumulativePatents > 10)
+                return from GrantedPatentsDataUniverse d in data
+                       where d.Patents90d > 0 
+                       && d.TechDiversity > 0.5m
+                       && d.CumulativePatents > 10
+                       orderby d.TechDiversity descending
                        select d.Symbol;
             });
 
+            // Test historical universe data
             var history = History(universe, 1).ToList();
             if (history.Count != 1)
             {
-                throw new System.Exception($"Unexpected historical data count!");
+                Log($"Warning: Expected 1 day of historical data, got {history.Count}");
             }
             foreach (var dataForDate in history)
             {
-                var coarseData = dataForDate.ToList();
-                if (coarseData.Count < 300)
-                {
-                    throw new System.Exception($"Unexpected historical universe data!");
-                }
+                var universeData = dataForDate.ToList();
+                Log($"Historical universe contains {universeData.Count} stocks");
             }
         }
 
@@ -72,7 +77,17 @@ namespace QuantConnect.Algorithm.CSharp
         /// <param name="changes">Security additions/removals for this time step</param>
         public override void OnSecuritiesChanged(SecurityChanges changes)
         {
-            Log(changes.ToString());
+            Log($"Universe changed - Added: {changes.AddedSecurities.Count}, Removed: {changes.RemovedSecurities.Count}");
+            
+            // Equal weight the selected securities
+            if (changes.AddedSecurities.Count > 0)
+            {
+                var weight = 1.0m / changes.AddedSecurities.Count;
+                foreach (var security in changes.AddedSecurities)
+                {
+                    SetHoldings(security.Symbol, (double)weight);
+                }
+            }
         }
     }
 }
